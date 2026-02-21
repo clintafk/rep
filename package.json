@@ -1,0 +1,38 @@
+{
+  "name": "rep",
+  "version": "1.0.0",
+  "description": "Anki-like spaced repetition CLI built with ink",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "rep": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --loader ts-node/esm src/index.tsx"
+  },
+  "keywords": [
+    "anki",
+    "spaced-repetition",
+    "cli",
+    "flashcards"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "better-sqlite3": "^12.6.2",
+    "ink": "^6.8.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.3.0",
+    "@types/react": "^19.2.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
