@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput, Key } from 'ink';
 import { Card, Rating } from '../../types/index.js';
 import { Header, Divider, KeyHints } from './shared.js';
+// import { Image } from './Image.js';
 
 interface Props {
   deckName: string;
@@ -79,11 +80,11 @@ export function ReviewScreen({ deckName, cards, onRate, onDone }: Props) {
       >
         <Text color="gray" dimColor>FRONT</Text>
         <Text color="white" bold>{card.front}</Text>
-        {card.frontImage && (
-          <Box marginTop={1}>
-            <Text color="yellowBright">🖼 [Image: {card.frontImage}]</Text>
+        {/* {card.frontImage && (
+          <Box marginTop={1} borderStyle="single" borderColor="yellow">
+            <Image filename={card.frontImage} maxHeight={12} />
           </Box>
-        )}
+        )} */}
       </Box>
 
       {phase === 'back' && (
@@ -97,11 +98,11 @@ export function ReviewScreen({ deckName, cards, onRate, onDone }: Props) {
           >
             <Text color="gray" dimColor>BACK</Text>
             <Text color="greenBright">{card.back}</Text>
-            {card.backImage && (
-              <Box marginTop={1}>
-                <Text color="yellowBright">🖼 [Image: {card.backImage}]</Text>
+            {/* {card.backImage && (
+              <Box marginTop={1} borderStyle="single" borderColor="yellow">
+                <Image filename={card.backImage} maxHeight={12} />
               </Box>
-            )}
+            )} */}
           </Box>
 
           <Divider />

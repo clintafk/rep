@@ -5,8 +5,8 @@ export interface Card {
   deckId: number;
   front: string;
   back: string;
-  frontImage?: string;
-  backImage?: string;
+  // frontImage?: string;
+  // backImage?: string;
   // SM-2 fields
   interval: number;     // days until next review
   easeFactor: number;   // 1.3 - 2.5 (default 2.5)

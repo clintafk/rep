@@ -1,25 +1,176 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { Header, Badge, KeyHints } from './shared.js';
-export function Dashboard({ stats, onSelectDeck, onAddDeck, onImport }) {
+import { Header, Badge, KeyHints, Divider } from './shared.js';
+export function Dashboard({ stats, onSelectDeck, onAddDeck, onImport, onDeleteDecks }) {
     const [cursor, setCursor] = useState(0);
+    const [mode, setMode] = useState('normal');
+    const [manualSelected, setManualSelected] = useState(new Set());
+    const [visualStart, setVisualStart] = useState(0);
+    // Refs to prevent stale closures in useInput
+    const cursorRef = useRef(cursor);
+    const modeRef = useRef(mode);
+    const manualSelectedRef = useRef(manualSelected);
+    const visualStartRef = useRef(visualStart);
+    const statsRef = useRef(stats);
+    cursorRef.current = cursor;
+    modeRef.current = mode;
+    manualSelectedRef.current = manualSelected;
+    visualStartRef.current = visualStart;
+    statsRef.current = stats;
+    const getEffectiveSelection = useCallback(() => {
+        const result = new Set(manualSelectedRef.current);
+        if (modeRef.current === 'visual') {
+            const min = Math.min(visualStartRef.current, cursorRef.current);
+            const max = Math.max(visualStartRef.current, cursorRef.current);
+            for (let i = min; i <= max; i++) {
+                const s = statsRef.current[i];
+                if (s)
+                    result.add(s.deck.id);
+            }
+        }
+        return result;
+    }, []);
     useInput((input, key) => {
+        const cur = cursorRef.current;
+        const m = modeRef.current;
+        const list = statsRef.current;
+        // ─── Confirm Delete ────────────────────────────────────────────────────
+        if (m === 'confirm-delete') {
+            if (input === 'y' || input === 'Y' || key.return) {
+                onDeleteDecks(Array.from(manualSelectedRef.current));
+                setManualSelected(new Set());
+                setMode('normal');
+            }
+            else {
+                setMode('normal');
+            }
+            return;
+        }
+        // ─── Navigation ────────────────────────────────────────────────────────
         if (key.downArrow || input === 'j') {
-            setCursor(c => Math.min(c + 1, stats.length - 1));
+            setCursor(c => Math.min(c + 1, Math.max(0, list.length - 1)));
+            return;
         }
         if (key.upArrow || input === 'k') {
             setCursor(c => Math.max(c - 1, 0));
+            return;
         }
-        if (key.return && stats[cursor]) {
-            onSelectDeck(stats[cursor].deck.id);
+        // ─── Open deck (Enter, normal mode only) ──────────────────────────────
+        if (key.return && m === 'normal' && list[cur]) {
+            onSelectDeck(list[cur].deck.id);
+            return;
         }
-        if (input === 'a')
+        // ─── Add / Import ──────────────────────────────────────────────────────
+        if (input === 'a' && m === 'normal') {
             onAddDeck();
-        if (input === 'i')
+            return;
+        }
+        if (input === 'i' && m === 'normal') {
             onImport();
+            return;
+        }
+        // ─── Quit ──────────────────────────────────────────────────────────────
+        if (input === 'q' && m === 'normal') {
+            // Handled by App's global useInput — fall through
+            return;
+        }
+        // ─── Escape visual mode ────────────────────────────────────────────────
+        if (key.escape || (input === 'q' && m === 'visual')) {
+            if (m === 'visual') {
+                setMode('normal');
+                return;
+            }
+        }
+        // ─── Toggle selection (x) ─────────────────────────────────────────────
+        if (input === 'x') {
+            const s = list[cur];
+            if (!s)
+                return;
+            const id = s.deck.id;
+            setManualSelected(prev => {
+                const next = new Set(prev);
+                if (next.has(id))
+                    next.delete(id);
+                else
+                    next.add(id);
+                return next;
+            });
+            return;
+        }
+        // ─── Clear selections ──────────────────────────────────────────────────
+        if (input === 'c') {
+            setManualSelected(new Set());
+            return;
+        }
+        // ─── Visual mode (v) ──────────────────────────────────────────────────
+        if (input === 'v') {
+            if (m === 'visual') {
+                const sel = getEffectiveSelection();
+                setManualSelected(sel);
+                setMode('normal');
+            }
+            else {
+                setVisualStart(cur);
+                setMode('visual');
+            }
+            return;
+        }
+        // ─── Delete (d) ────────────────────────────────────────────────────────
+        if (input === 'd') {
+            const sel = getEffectiveSelection();
+            if (sel.size > 0) {
+                setManualSelected(sel); // lock visual range in before mode changes
+                setMode('confirm-delete');
+            }
+            else {
+                const s = list[cur];
+                if (s) {
+                    setManualSelected(new Set([s.deck.id]));
+                    setMode('confirm-delete');
+                }
+            }
+            return;
+        }
     });
+    // Recompute effective selection for render
+    const effectiveSel = new Set(manualSelected);
+    if (mode === 'visual') {
+        const min = Math.min(visualStart, cursor);
+        const max = Math.max(visualStart, cursor);
+        for (let i = min; i <= max; i++) {
+            const s = stats[i];
+            if (s)
+                effectiveSel.add(s.deck.id);
+        }
+    }
+    const safeCursor = Math.min(cursor, Math.max(0, stats.length - 1));
+    // ─── Confirm Delete Overlay ──────────────────────────────────────────────
+    if (mode === 'confirm-delete') {
+        const delCount = effectiveSel.size || 1;
+        return (React.createElement(Box, { flexDirection: "column", padding: 1 },
+            React.createElement(Header, null, "\u26A0\uFE0F  Confirm Delete"),
+            React.createElement(Box, { marginY: 1, flexDirection: "column" },
+                React.createElement(Text, null,
+                    "Delete ",
+                    React.createElement(Text, { color: "redBright", bold: true }, delCount),
+                    " deck(s) and all their cards?")),
+            React.createElement(Box, { flexDirection: "column", gap: 1 },
+                React.createElement(Text, { color: "yellowBright" }, "[y / Enter]  \u2192 Delete permanently"),
+                React.createElement(Text, { color: "gray" }, "   [any key]  \u2192 Cancel"))));
+    }
+    // ─── Dashboard ───────────────────────────────────────────────────────────
+    const windowStart = Math.max(0, safeCursor - 20);
+    const visible = stats.slice(windowStart, windowStart + 30);
     return (React.createElement(Box, { flexDirection: "column", padding: 1 },
-        React.createElement(Header, null, "\u26A1 Rep \u2014 Spaced Repetition"),
+        React.createElement(Box, { justifyContent: "space-between" },
+            React.createElement(Header, null, "\u26A1 Rep \u2014 Spaced Repetition"),
+            mode === 'visual' ? (React.createElement(Text, { color: "magentaBright", bold: true },
+                " \u2500\u2500 VISUAL (",
+                effectiveSel.size,
+                ") \u2500\u2500 ")) : effectiveSel.size > 0 ? (React.createElement(Text, { color: "yellowBright" },
+                " [",
+                effectiveSel.size,
+                " selected] ")) : null),
         stats.length === 0 ? (React.createElement(Box, { flexDirection: "column", alignItems: "center", marginY: 2 },
             React.createElement(Text, { color: "gray" }, "No decks yet."),
             React.createElement(Text, { color: "gray" },
@@ -29,27 +180,37 @@ export function Dashboard({ stats, onSelectDeck, onAddDeck, onImport }) {
                 ' ',
                 React.createElement(Text, { color: "yellowBright", bold: true }, "[i]"),
                 " to import an .apkg file."))) : (React.createElement(Box, { flexDirection: "column" },
-            React.createElement(Box, { marginBottom: 1 },
+            React.createElement(Box, { marginBottom: 1, marginTop: 1 },
                 React.createElement(Text, { color: "gray", dimColor: true },
                     '  ',
                     "DECK",
                     ' '.repeat(28),
                     "DUE   NEW   TOTAL")),
-            stats.map((s, idx) => {
-                const isSelected = idx === cursor;
-                return (React.createElement(Box, { key: s.deck.id, marginBottom: 0 },
-                    React.createElement(Text, { color: isSelected ? 'cyanBright' : 'white', bold: isSelected }, isSelected ? '▶ ' : '  '),
+            visible.map((s, idx) => {
+                const actualIdx = windowStart + idx;
+                const isCursor = actualIdx === safeCursor;
+                const isSelected = effectiveSel.has(s.deck.id);
+                const prefixColor = isCursor ? 'cyanBright' : isSelected ? 'yellowBright' : 'white';
+                const textColor = isCursor ? 'cyanBright' : isSelected ? 'yellowBright' : 'white';
+                const prefix = isCursor ? '▶ ' : isSelected ? '◉ ' : '  ';
+                return (React.createElement(Box, { key: s.deck.id },
+                    React.createElement(Text, { color: prefixColor, bold: isCursor }, prefix),
                     React.createElement(Box, { flexGrow: 1 },
-                        React.createElement(Text, { color: isSelected ? 'cyanBright' : 'white', bold: isSelected, wrap: "truncate" }, s.deck.name.padEnd(30, ' '))),
+                        React.createElement(Text, { color: textColor, bold: isCursor, wrap: "truncate", strikethrough: isSelected && !isCursor }, s.deck.name.padEnd(30, ' '))),
                     React.createElement(Badge, { label: "", value: s.due > 0 ? String(s.due) : '—', color: s.due > 0 ? 'redBright' : 'gray' }),
                     React.createElement(Badge, { label: "", value: s.newCards > 0 ? String(s.newCards) : '—', color: s.newCards > 0 ? 'greenBright' : 'gray' }),
                     React.createElement(Badge, { label: "", value: String(s.total), color: "white" })));
             }))),
+        React.createElement(Divider, null),
         React.createElement(KeyHints, { hints: [
-                { key: 'j/k', desc: 'navigate' },
-                { key: 'Enter', desc: 'review deck' },
+                { key: 'j/k', desc: 'move' },
+                { key: 'Enter', desc: 'open deck' },
+                { key: 'x', desc: 'select' },
+                { key: 'v', desc: mode === 'visual' ? 'lock range' : 'visual' },
+                { key: 'd', desc: 'delete' },
+                { key: 'c', desc: 'clear sel.' },
                 { key: 'a', desc: 'add deck' },
-                { key: 'i', desc: 'import .apkg' },
+                { key: 'i', desc: 'import' },
                 { key: 'q', desc: 'quit' },
             ] })));
 }

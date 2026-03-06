@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { Header, KeyHints } from './shared.js';
+import { Image } from './Image.js';
 export function ModifyCardScreen({ card, onSave, onCancel }) {
     const [field, setField] = useState('front');
     const [front, setFront] = useState(card.front);
@@ -47,16 +48,19 @@ export function ModifyCardScreen({ card, onSave, onCancel }) {
                     f.label,
                     " ",
                     field === f.id ? '▶' : ''),
-                React.createElement(Box, { borderStyle: "round", borderColor: field === f.id ? f.color : 'gray', paddingX: 1 },
-                    React.createElement(TextInput, { value: f.value, onChange: f.setter, onSubmit: () => {
-                            if (f.id === 'backImage') {
-                                handleSave();
-                            }
-                            else {
-                                const idx = fields.indexOf(f.id);
-                                setField(fields[idx + 1]);
-                            }
-                        }, focus: field === f.id }))))),
+                React.createElement(Box, { flexDirection: "row", gap: 2 },
+                    React.createElement(Box, { borderStyle: "round", borderColor: field === f.id ? f.color : 'gray', paddingX: 1, flexGrow: 1 },
+                        React.createElement(TextInput, { value: f.value, onChange: f.setter, onSubmit: () => {
+                                if (f.id === 'backImage') {
+                                    handleSave();
+                                }
+                                else {
+                                    const idx = fields.indexOf(f.id);
+                                    setField(fields[idx + 1]);
+                                }
+                            }, focus: field === f.id })),
+                    (f.id === 'frontImage' || f.id === 'backImage') && f.value && (React.createElement(Box, { borderStyle: "single", borderColor: "gray", paddingX: 1 },
+                        React.createElement(Image, { filename: f.value, maxHeight: 5 }))))))),
             error && React.createElement(Text, { color: "redBright" },
                 "\u26A0 ",
                 error)),

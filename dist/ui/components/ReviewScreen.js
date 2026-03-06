@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { Header, Divider, KeyHints } from './shared.js';
+import { Image } from './Image.js';
 export function ReviewScreen({ deckName, cards, onRate, onDone }) {
     const [index, setIndex] = useState(0);
     const [phase, setPhase] = useState('front');
@@ -52,20 +53,14 @@ export function ReviewScreen({ deckName, cards, onRate, onDone }) {
         React.createElement(Box, { borderStyle: "round", borderColor: phase === 'front' ? 'cyanBright' : 'gray', padding: 1, marginBottom: 1, flexDirection: "column" },
             React.createElement(Text, { color: "gray", dimColor: true }, "FRONT"),
             React.createElement(Text, { color: "white", bold: true }, card.front),
-            card.frontImage && (React.createElement(Box, { marginTop: 1 },
-                React.createElement(Text, { color: "yellowBright" },
-                    "\uD83D\uDDBC [Image: ",
-                    card.frontImage,
-                    "]")))),
+            card.frontImage && (React.createElement(Box, { marginTop: 1, borderStyle: "single", borderColor: "yellow" },
+                React.createElement(Image, { filename: card.frontImage, maxHeight: 12 })))),
         phase === 'back' && (React.createElement(React.Fragment, null,
             React.createElement(Box, { borderStyle: "round", borderColor: "greenBright", padding: 1, marginBottom: 1, flexDirection: "column" },
                 React.createElement(Text, { color: "gray", dimColor: true }, "BACK"),
                 React.createElement(Text, { color: "greenBright" }, card.back),
-                card.backImage && (React.createElement(Box, { marginTop: 1 },
-                    React.createElement(Text, { color: "yellowBright" },
-                        "\uD83D\uDDBC [Image: ",
-                        card.backImage,
-                        "]")))),
+                card.backImage && (React.createElement(Box, { marginTop: 1, borderStyle: "single", borderColor: "yellow" },
+                    React.createElement(Image, { filename: card.backImage, maxHeight: 12 })))),
             React.createElement(Divider, null),
             React.createElement(Box, { marginTop: 1, flexDirection: "column" },
                 React.createElement(Text, { color: "gray" }, "How well did you remember it?"),

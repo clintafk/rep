@@ -8,7 +8,7 @@ import { ImportScreen } from './components/ImportScreen.js';
 import { DeckMenuScreen } from './components/DeckMenuScreen.js';
 import { BrowseCardsScreen } from './components/BrowseCardsScreen.js';
 import { ModifyCardScreen } from './components/ModifyCardScreen.js';
-import { getDeckStats, createDeck, createCard, getDueCards, updateCardAfterReview, getDeckById, getCardsByDeckId, updateCard, } from '../storage/db.js';
+import { getDeckStats, createDeck, createCard, getDueCards, updateCardAfterReview, getDeckById, getCardsByDeckId, updateCard, deleteCards, deleteDecks, } from '../storage/db.js';
 import { importApkg } from '../apkg/importer.js';
 import { sm2 } from '../core/sm2.js';
 export function App() {
@@ -43,6 +43,9 @@ export function App() {
                 setImportStatus('');
                 setImportError('');
                 setScreen('import');
+            }, onDeleteDecks: (ids) => {
+                deleteDecks(ids);
+                refresh();
             } })),
         screen === 'deck-menu' && activeDeck && (React.createElement(DeckMenuScreen, { deckName: activeDeck.name, dueCount: deckStats.find((s) => s.deck.id === activeDeckId)?.due || 0, onReview: () => {
                 const cards = getDueCards(activeDeck.id);
@@ -67,6 +70,10 @@ export function App() {
         screen === 'browse-cards' && activeDeck && (React.createElement(BrowseCardsScreen, { deckName: activeDeck.name, cards: browseCards, onEditCard: (card) => {
                 setEditingCard(card);
                 setScreen('modify-card');
+            }, onDeleteCards: (ids) => {
+                deleteCards(ids);
+                setBrowseCards(getCardsByDeckId(activeDeck.id));
+                refresh();
             }, onBack: () => setScreen('deck-menu') })),
         screen === 'modify-card' && editingCard && activeDeck && (React.createElement(ModifyCardScreen, { card: editingCard, onSave: (updates) => {
                 updateCard(editingCard.id, updates);

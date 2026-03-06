@@ -6,12 +6,14 @@ import { Card, Deck, DeckStats } from '../types/index.js';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'rep');
 const DB_PATH = path.join(CONFIG_DIR, 'data.db');
+// const MEDIA_DIR = path.join(CONFIG_DIR, 'media');
 
 let db: Database.Database;
 
 function getDb(): Database.Database {
   if (!db) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    // fs.mkdirSync(MEDIA_DIR, { recursive: true });
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     initSchema(db);
@@ -34,8 +36,8 @@ function initSchema(db: Database.Database) {
       deck_id INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
       front TEXT NOT NULL,
       back TEXT NOT NULL,
-      front_image TEXT,
-      back_image TEXT,
+      -- front_image TEXT,
+      -- back_image TEXT,
       interval INTEGER NOT NULL DEFAULT 0,
       ease_factor REAL NOT NULL DEFAULT 2.5,
       repetitions INTEGER NOT NULL DEFAULT 0,
@@ -47,6 +49,25 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id);
     CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date);
   `);
+
+  // // Migration: Add front_image and back_image to cards if they don't exist
+  // const tableInfo = db.prepare("PRAGMA table_info(cards)").all() as any[];
+  // const columns = tableInfo.map(c => c.name);
+  //
+  // if (!columns.includes('front_image')) {
+  //   try {
+  //     db.exec("ALTER TABLE cards ADD COLUMN front_image TEXT;");
+  //   } catch (err) {
+  //     console.warn('Failed to add front_image column:', err);
+  //   }
+  // }
+  // if (!columns.includes('back_image')) {
+  //   try {
+  //     db.exec("ALTER TABLE cards ADD COLUMN back_image TEXT;");
+  //   } catch (err) {
+  //     console.warn('Failed to add back_image column:', err);
+  //   }
+  // }
 }
 
 export function createDeck(name: string, description = ''): Deck {
@@ -73,6 +94,15 @@ export function getDeckById(id: number): Deck | null {
 export function deleteDeck(id: number): void {
   const db = getDb();
   db.prepare('DELETE FROM decks WHERE id = ?').run(id);
+}
+
+export function deleteDecks(ids: number[]): void {
+  const db = getDb();
+  const drop = db.transaction((ids: number[]) => {
+    const stmt = db.prepare('DELETE FROM decks WHERE id = ?');
+    for (const id of ids) stmt.run(id);
+  });
+  drop(ids);
 }
 
 export function getDeckStats(): DeckStats[] {
@@ -102,27 +132,27 @@ export function createCard(
   deckId: number,
   front: string,
   back: string,
-  frontImage?: string,
-  backImage?: string
+  // frontImage?: string,
+  // backImage?: string
 ): Card {
   const db = getDb();
   const stmt = db.prepare(
-    'INSERT INTO cards (deck_id, front, back, front_image, back_image) VALUES (?, ?, ?, ?, ?) RETURNING *'
+    'INSERT INTO cards (deck_id, front, back) VALUES (?, ?, ?) RETURNING *'
   );
-  const row = stmt.get(deckId, front, back, frontImage, backImage) as any;
+  const row = stmt.get(deckId, front, back) as any;
   return rowToCard(row);
 }
 
 export function updateCard(
   id: number,
-  updates: Partial<Pick<Card, 'front' | 'back' | 'frontImage' | 'backImage'>>
+  updates: Partial<Pick<Card, 'front' | 'back' /* | 'frontImage' | 'backImage' */>>
 ): void {
   const db = getDb();
   const fields = Object.keys(updates).map(k => {
     const dbKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     return `${dbKey} = ?`;
   });
-  const values = Object.values(updates);
+  const values = Object.values(updates).map(v => v ?? null);
 
   if (fields.length === 0) return;
 
@@ -168,6 +198,15 @@ export function deleteCard(id: number): void {
   db.prepare('DELETE FROM cards WHERE id = ?').run(id);
 }
 
+export function deleteCards(ids: number[]): void {
+  const db = getDb();
+  const deleteMany = db.transaction((ids: number[]) => {
+    const stmt = db.prepare('DELETE FROM cards WHERE id = ?');
+    for (const id of ids) stmt.run(id);
+  });
+  deleteMany(ids);
+}
+
 function rowToDeck(row: any): Deck {
   return {
     id: row.id,
@@ -184,8 +223,8 @@ function rowToCard(row: any): Card {
     deckId: row.deck_id,
     front: row.front,
     back: row.back,
-    frontImage: row.front_image ?? undefined,
-    backImage: row.back_image ?? undefined,
+    // frontImage: row.front_image ?? undefined,
+    // backImage: row.back_image ?? undefined,
     interval: row.interval,
     easeFactor: row.ease_factor,
     repetitions: row.repetitions,
@@ -195,4 +234,4 @@ function rowToCard(row: any): Card {
   };
 }
 
-export { DB_PATH };
+export { DB_PATH, CONFIG_DIR /*, MEDIA_DIR */ };

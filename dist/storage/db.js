@@ -4,10 +4,12 @@ import os from 'os';
 import fs from 'fs';
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'rep');
 const DB_PATH = path.join(CONFIG_DIR, 'data.db');
+const MEDIA_DIR = path.join(CONFIG_DIR, 'media');
 let db;
 function getDb() {
     if (!db) {
         fs.mkdirSync(CONFIG_DIR, { recursive: true });
+        fs.mkdirSync(MEDIA_DIR, { recursive: true });
         db = new Database(DB_PATH);
         db.pragma('journal_mode = WAL');
         initSchema(db);
@@ -42,6 +44,25 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id);
     CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date);
   `);
+    // Migration: Add front_image and back_image to cards if they don't exist
+    const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
+    const columns = tableInfo.map(c => c.name);
+    if (!columns.includes('front_image')) {
+        try {
+            db.exec("ALTER TABLE cards ADD COLUMN front_image TEXT;");
+        }
+        catch (err) {
+            console.warn('Failed to add front_image column:', err);
+        }
+    }
+    if (!columns.includes('back_image')) {
+        try {
+            db.exec("ALTER TABLE cards ADD COLUMN back_image TEXT;");
+        }
+        catch (err) {
+            console.warn('Failed to add back_image column:', err);
+        }
+    }
 }
 export function createDeck(name, description = '') {
     const db = getDb();
@@ -63,6 +84,15 @@ export function deleteDeck(id) {
     const db = getDb();
     db.prepare('DELETE FROM decks WHERE id = ?').run(id);
 }
+export function deleteDecks(ids) {
+    const db = getDb();
+    const drop = db.transaction((ids) => {
+        const stmt = db.prepare('DELETE FROM decks WHERE id = ?');
+        for (const id of ids)
+            stmt.run(id);
+    });
+    drop(ids);
+}
 export function getDeckStats() {
     const db = getDb();
     const decks = getAllDecks();
@@ -77,7 +107,7 @@ export function getDeckStats() {
 export function createCard(deckId, front, back, frontImage, backImage) {
     const db = getDb();
     const stmt = db.prepare('INSERT INTO cards (deck_id, front, back, front_image, back_image) VALUES (?, ?, ?, ?, ?) RETURNING *');
-    const row = stmt.get(deckId, front, back, frontImage, backImage);
+    const row = stmt.get(deckId, front, back, frontImage ?? null, backImage ?? null);
     return rowToCard(row);
 }
 export function updateCard(id, updates) {
@@ -86,7 +116,7 @@ export function updateCard(id, updates) {
         const dbKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         return `${dbKey} = ?`;
     });
-    const values = Object.values(updates);
+    const values = Object.values(updates).map(v => v ?? null);
     if (fields.length === 0)
         return;
     const sql = `UPDATE cards SET ${fields.join(', ')}, updated_at = datetime('now') WHERE id = ?`;
@@ -116,6 +146,15 @@ export function deleteCard(id) {
     const db = getDb();
     db.prepare('DELETE FROM cards WHERE id = ?').run(id);
 }
+export function deleteCards(ids) {
+    const db = getDb();
+    const deleteMany = db.transaction((ids) => {
+        const stmt = db.prepare('DELETE FROM cards WHERE id = ?');
+        for (const id of ids)
+            stmt.run(id);
+    });
+    deleteMany(ids);
+}
 function rowToDeck(row) {
     return {
         id: row.id,
@@ -141,4 +180,4 @@ function rowToCard(row) {
         updatedAt: row.updated_at,
     };
 }
-export { DB_PATH };
+export { DB_PATH, CONFIG_DIR, MEDIA_DIR };

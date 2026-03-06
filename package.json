@@ -23,9 +23,11 @@
   "dependencies": {
     "adm-zip": "^0.5.16",
     "better-sqlite3": "^12.6.2",
+    "image-size": "^2.0.2",
     "ink": "^6.8.0",
     "ink-text-input": "^6.0.0",
-    "react": "^19.2.4"
+    "react": "^19.2.4",
+    "terminal-image": "^4.2.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

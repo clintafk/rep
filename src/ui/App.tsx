@@ -17,6 +17,8 @@ import {
   getDeckById,
   getCardsByDeckId,
   updateCard,
+  deleteCards,
+  deleteDecks,
 } from '../storage/db.js';
 import { importApkg } from '../apkg/importer.js';
 import { sm2 } from '../core/sm2.js';
@@ -76,6 +78,10 @@ export function App() {
             setImportError('');
             setScreen('import');
           }}
+          onDeleteDecks={(ids) => {
+            deleteDecks(ids);
+            refresh();
+          }}
         />
       )}
 
@@ -131,6 +137,11 @@ export function App() {
             setEditingCard(card);
             setScreen('modify-card');
           }}
+          onDeleteCards={(ids) => {
+            deleteCards(ids);
+            setBrowseCards(getCardsByDeckId(activeDeck.id));
+            refresh();
+          }}
           onBack={() => setScreen('deck-menu')}
         />
       )}
@@ -152,8 +163,8 @@ export function App() {
         <AddCardScreen
           deckId={activeDeck.id}
           deckName={activeDeck.name}
-          onAdd={(front: string, back: string, frontImage?: string, backImage?: string) => {
-            createCard(activeDeck.id, front, back, frontImage, backImage);
+          onAdd={(front: string, back: string) => {
+            createCard(activeDeck.id, front, back);
             refresh();
           }}
           onCancel={() => setScreen('deck-menu')}
