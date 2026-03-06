@@ -8,7 +8,7 @@ import { ImportScreen } from './components/ImportScreen.js';
 import { DeckMenuScreen } from './components/DeckMenuScreen.js';
 import { BrowseCardsScreen } from './components/BrowseCardsScreen.js';
 import { ModifyCardScreen } from './components/ModifyCardScreen.js';
-import { getDeckStats, createDeck, createCard, getDueCards, updateCardAfterReview, getDeckById, getCardsByDeckId, updateCard, deleteCards, deleteDecks, } from '../storage/db.js';
+import { getDeckStats, createDeck, createCard, getDueCards, getNewCards, getLearningCards, updateCardAfterReview, getDeckById, getCardsByDeckId, updateCard, deleteCards, deleteDecks, } from '../storage/db.js';
 import { importApkg } from '../apkg/importer.js';
 import { sm2 } from '../core/sm2.js';
 export function App() {
@@ -47,9 +47,12 @@ export function App() {
                 deleteDecks(ids);
                 refresh();
             } })),
-        screen === 'deck-menu' && activeDeck && (React.createElement(DeckMenuScreen, { deckName: activeDeck.name, dueCount: deckStats.find((s) => s.deck.id === activeDeckId)?.due || 0, onReview: () => {
-                const cards = getDueCards(activeDeck.id);
-                setDueCards(cards);
+        screen === 'deck-menu' && activeDeck && (React.createElement(DeckMenuScreen, { deckName: activeDeck.name, dueCount: deckStats.find((s) => s.deck.id === activeDeckId)?.due || 0, newCount: deckStats.find((s) => s.deck.id === activeDeckId)?.newCards || 0, learningCount: deckStats.find((s) => s.deck.id === activeDeckId)?.learning || 0, onReview: (cardLimit) => {
+                const due = getDueCards(activeDeck.id, cardLimit);
+                const learning = getLearningCards(activeDeck.id);
+                const remainingSlots = Math.max(0, cardLimit - due.length);
+                const newCards = remainingSlots > 0 ? getNewCards(activeDeck.id, remainingSlots) : [];
+                setDueCards([...learning, ...due, ...newCards]);
                 setScreen('review');
             }, onAddCard: () => setScreen('add-card'), onBrowse: () => {
                 setBrowseCards(getCardsByDeckId(activeDeck.id));
@@ -58,11 +61,14 @@ export function App() {
         screen === 'review' && activeDeck && (React.createElement(ReviewScreen, { deckName: activeDeck.name, cards: dueCards, onRate: (card, rating) => {
                 const result = sm2({
                     rating,
+                    state: card.state,
+                    learningStep: card.learningStep,
                     repetitions: card.repetitions,
                     easeFactor: card.easeFactor,
                     interval: card.interval,
                 });
-                updateCardAfterReview(card.id, result.interval, result.easeFactor, result.repetitions, result.dueDate);
+                updateCardAfterReview(card.id, result.state, result.learningStep, result.interval, result.easeFactor, result.repetitions, result.dueDate);
+                return result;
             }, onDone: () => {
                 refresh();
                 setScreen('deck-menu');
@@ -81,8 +87,8 @@ export function App() {
                 setScreen('browse-cards');
                 refresh();
             }, onCancel: () => setScreen('browse-cards') })),
-        screen === 'add-card' && activeDeck && (React.createElement(AddCardScreen, { deckId: activeDeck.id, deckName: activeDeck.name, onAdd: (front, back, frontImage, backImage) => {
-                createCard(activeDeck.id, front, back, frontImage, backImage);
+        screen === 'add-card' && activeDeck && (React.createElement(AddCardScreen, { deckId: activeDeck.id, deckName: activeDeck.name, onAdd: (front, back) => {
+                createCard(activeDeck.id, front, back);
                 refresh();
             }, onCancel: () => setScreen('deck-menu') })),
         screen === 'add-deck' && (React.createElement(AddDeckScreen, { onAdd: (name, description) => {

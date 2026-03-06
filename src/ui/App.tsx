@@ -13,6 +13,8 @@ import {
   createDeck,
   createCard,
   getDueCards,
+  getNewCards,
+  getLearningCards,
   updateCardAfterReview,
   getDeckById,
   getCardsByDeckId,
@@ -89,9 +91,14 @@ export function App() {
         <DeckMenuScreen
           deckName={activeDeck.name}
           dueCount={deckStats.find((s) => s.deck.id === activeDeckId)?.due || 0}
-          onReview={() => {
-            const cards = getDueCards(activeDeck.id);
-            setDueCards(cards);
+          newCount={deckStats.find((s) => s.deck.id === activeDeckId)?.newCards || 0}
+          learningCount={deckStats.find((s) => s.deck.id === activeDeckId)?.learning || 0}
+          onReview={(cardLimit: number) => {
+            const due = getDueCards(activeDeck.id, cardLimit);
+            const learning = getLearningCards(activeDeck.id);
+            const remainingSlots = Math.max(0, cardLimit - due.length);
+            const newCards = remainingSlots > 0 ? getNewCards(activeDeck.id, remainingSlots) : [];
+            setDueCards([...learning, ...due, ...newCards]);
             setScreen('review');
           }}
           onAddCard={() => setScreen('add-card')}
@@ -110,17 +117,22 @@ export function App() {
           onRate={(card: Card, rating: Rating) => {
             const result = sm2({
               rating,
+              state: card.state,
+              learningStep: card.learningStep,
               repetitions: card.repetitions,
               easeFactor: card.easeFactor,
               interval: card.interval,
             });
             updateCardAfterReview(
               card.id,
+              result.state,
+              result.learningStep,
               result.interval,
               result.easeFactor,
               result.repetitions,
               result.dueDate
             );
+            return result;
           }}
           onDone={() => {
             refresh();

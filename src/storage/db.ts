@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { Card, Deck, DeckStats } from '../types/index.js';
+import { Card, CardState, Deck, DeckStats } from '../types/index.js';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'rep');
 const DB_PATH = path.join(CONFIG_DIR, 'data.db');
@@ -38,6 +38,8 @@ function initSchema(db: Database.Database) {
       back TEXT NOT NULL,
       -- front_image TEXT,
       -- back_image TEXT,
+      state TEXT NOT NULL DEFAULT 'new',
+      learning_step INTEGER NOT NULL DEFAULT 0,
       interval INTEGER NOT NULL DEFAULT 0,
       ease_factor REAL NOT NULL DEFAULT 2.5,
       repetitions INTEGER NOT NULL DEFAULT 0,
@@ -50,24 +52,24 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date);
   `);
 
-  // // Migration: Add front_image and back_image to cards if they don't exist
-  // const tableInfo = db.prepare("PRAGMA table_info(cards)").all() as any[];
-  // const columns = tableInfo.map(c => c.name);
-  //
-  // if (!columns.includes('front_image')) {
-  //   try {
-  //     db.exec("ALTER TABLE cards ADD COLUMN front_image TEXT;");
-  //   } catch (err) {
-  //     console.warn('Failed to add front_image column:', err);
-  //   }
-  // }
-  // if (!columns.includes('back_image')) {
-  //   try {
-  //     db.exec("ALTER TABLE cards ADD COLUMN back_image TEXT;");
-  //   } catch (err) {
-  //     console.warn('Failed to add back_image column:', err);
-  //   }
-  // }
+  // Migration: Add state and learning_step columns if they don't exist
+  const tableInfo = db.prepare("PRAGMA table_info(cards)").all() as any[];
+  const columns = tableInfo.map((c: any) => c.name);
+
+  if (!columns.includes('state')) {
+    try {
+      db.exec("ALTER TABLE cards ADD COLUMN state TEXT NOT NULL DEFAULT 'new';");
+    } catch (err) {
+      // Column already exists
+    }
+  }
+  if (!columns.includes('learning_step')) {
+    try {
+      db.exec("ALTER TABLE cards ADD COLUMN learning_step INTEGER NOT NULL DEFAULT 0;");
+    } catch (err) {
+      // Column already exists
+    }
+  }
 }
 
 export function createDeck(name: string, description = ''): Deck {
@@ -116,15 +118,20 @@ export function getDeckStats(): DeckStats[] {
     ).count as number;
     const due = (
       db.prepare(
-        'SELECT COUNT(*) as count FROM cards WHERE deck_id = ? AND due_date <= ?'
+        `SELECT COUNT(*) as count FROM cards WHERE deck_id = ? AND state = 'review' AND due_date <= ?`
       ).get(deck.id, today) as any
     ).count as number;
     const newCards = (
       db.prepare(
-        'SELECT COUNT(*) as count FROM cards WHERE deck_id = ? AND repetitions = 0'
+        `SELECT COUNT(*) as count FROM cards WHERE deck_id = ? AND state = 'new'`
       ).get(deck.id) as any
     ).count as number;
-    return { deck, total, due, newCards };
+    const learning = (
+      db.prepare(
+        `SELECT COUNT(*) as count FROM cards WHERE deck_id = ? AND state IN ('learning', 'relearning')`
+      ).get(deck.id) as any
+    ).count as number;
+    return { deck, total, due, newCards, learning };
   });
 }
 
@@ -173,14 +180,36 @@ export function getDueCards(deckId: number, limit = 20): Card[] {
   const today = new Date().toISOString().split('T')[0]!;
   const rows = db
     .prepare(
-      'SELECT * FROM cards WHERE deck_id = ? AND due_date <= ? ORDER BY due_date ASC LIMIT ?'
+      `SELECT * FROM cards WHERE deck_id = ? AND state = 'review' AND due_date <= ? ORDER BY due_date ASC LIMIT ?`
     )
     .all(deckId, today, limit) as any[];
   return rows.map(rowToCard);
 }
 
+export function getNewCards(deckId: number, limit = 20): Card[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM cards WHERE deck_id = ? AND state = 'new' ORDER BY created_at ASC LIMIT ?`
+    )
+    .all(deckId, limit) as any[];
+  return rows.map(rowToCard);
+}
+
+export function getLearningCards(deckId: number): Card[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM cards WHERE deck_id = ? AND state IN ('learning', 'relearning') ORDER BY due_date ASC`
+    )
+    .all(deckId) as any[];
+  return rows.map(rowToCard);
+}
+
 export function updateCardAfterReview(
   cardId: number,
+  state: CardState,
+  learningStep: number,
   interval: number,
   easeFactor: number,
   repetitions: number,
@@ -188,9 +217,9 @@ export function updateCardAfterReview(
 ): void {
   const db = getDb();
   db.prepare(
-    `UPDATE cards SET interval=?, ease_factor=?, repetitions=?, due_date=?,
+    `UPDATE cards SET state=?, learning_step=?, interval=?, ease_factor=?, repetitions=?, due_date=?,
      updated_at=datetime('now') WHERE id=?`
-  ).run(interval, easeFactor, repetitions, dueDate, cardId);
+  ).run(state, learningStep, interval, easeFactor, repetitions, dueDate, cardId);
 }
 
 export function deleteCard(id: number): void {
@@ -225,6 +254,8 @@ function rowToCard(row: any): Card {
     back: row.back,
     // frontImage: row.front_image ?? undefined,
     // backImage: row.back_image ?? undefined,
+    state: (row.state ?? 'new') as CardState,
+    learningStep: row.learning_step ?? 0,
     interval: row.interval,
     easeFactor: row.ease_factor,
     repetitions: row.repetitions,
