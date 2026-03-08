@@ -6,21 +6,24 @@ import { Header, KeyHints } from './shared.js';
 interface Props {
   deckId: number;
   deckName: string;
-  onAdd: (front: string, back: string, frontImage?: string, backImage?: string) => void;
+  // onAdd: (front: string, back: string, frontImage?: string, backImage?: string) => void;
+  onAdd: (front: string, back: string) => void;
   onCancel: () => void;
 }
 
-type Field = 'front' | 'back' | 'frontImage' | 'backImage';
+// type Field = 'front' | 'back' | 'frontImage' | 'backImage';
+type Field = 'front' | 'back';
 
 export function AddCardScreen({ deckId, deckName, onAdd, onCancel }: Props) {
   const [field, setField] = useState<Field>('front');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
-  const [frontImage, setFrontImage] = useState('');
-  const [backImage, setBackImage] = useState('');
+  // const [frontImage, setFrontImage] = useState('');
+  // const [backImage, setBackImage] = useState('');
   const [error, setError] = useState('');
 
-  const fields: Field[] = ['front', 'back', 'frontImage', 'backImage'];
+  // const fields: Field[] = ['front', 'back', 'frontImage', 'backImage'];
+  const fields: Field[] = ['front', 'back'];
 
   useInput((input: string, key: Key) => {
     if (key.escape) onCancel();
@@ -36,13 +39,13 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }: Props) {
     onAdd(
       front.trim(),
       back.trim(),
-      frontImage.trim() || undefined,
-      backImage.trim() || undefined
+      // frontImage.trim() || undefined,
+      // backImage.trim() || undefined
     );
     setFront('');
     setBack('');
-    setFrontImage('');
-    setBackImage('');
+    // setFrontImage('');
+    // setBackImage('');
     setField('front');
     setError('');
   };
@@ -55,8 +58,8 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }: Props) {
         {[
           { id: 'front' as Field, label: 'Front', value: front, setter: setFront, color: 'cyanBright' },
           { id: 'back' as Field, label: 'Back', value: back, setter: setBack, color: 'greenBright' },
-          { id: 'frontImage' as Field, label: 'Front Image Path', value: frontImage, setter: setFrontImage, color: 'yellowBright' },
-          { id: 'backImage' as Field, label: 'Back Image Path', value: backImage, setter: setBackImage, color: 'blueBright' },
+          // { id: 'frontImage' as Field, label: 'Front Image Path', value: frontImage, setter: setFrontImage, color: 'yellowBright' },
+          // { id: 'backImage' as Field, label: 'Back Image Path', value: backImage, setter: setBackImage, color: 'blueBright' },
         ].map((f) => (
           <Box key={f.id} flexDirection="column" marginBottom={1}>
             <Text color={field === f.id ? f.color : 'gray'} bold={field === f.id}>
@@ -67,7 +70,7 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }: Props) {
                 value={f.value}
                 onChange={f.setter}
                 onSubmit={() => {
-                  if (f.id === 'backImage') {
+                  if (f.id === 'back') {
                     handleAdd();
                   } else {
                     const idx = fields.indexOf(f.id);

@@ -6,10 +6,11 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }) {
     const [field, setField] = useState('front');
     const [front, setFront] = useState('');
     const [back, setBack] = useState('');
-    const [frontImage, setFrontImage] = useState('');
-    const [backImage, setBackImage] = useState('');
+    // const [frontImage, setFrontImage] = useState('');
+    // const [backImage, setBackImage] = useState('');
     const [error, setError] = useState('');
-    const fields = ['front', 'back', 'frontImage', 'backImage'];
+    // const fields: Field[] = ['front', 'back', 'frontImage', 'backImage'];
+    const fields = ['front', 'back'];
     useInput((input, key) => {
         if (key.escape)
             onCancel();
@@ -27,11 +28,11 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }) {
             setError('Back cannot be empty');
             return;
         }
-        onAdd(front.trim(), back.trim(), frontImage.trim() || undefined, backImage.trim() || undefined);
+        onAdd(front.trim(), back.trim());
         setFront('');
         setBack('');
-        setFrontImage('');
-        setBackImage('');
+        // setFrontImage('');
+        // setBackImage('');
         setField('front');
         setError('');
     };
@@ -43,8 +44,8 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }) {
             [
                 { id: 'front', label: 'Front', value: front, setter: setFront, color: 'cyanBright' },
                 { id: 'back', label: 'Back', value: back, setter: setBack, color: 'greenBright' },
-                { id: 'frontImage', label: 'Front Image Path', value: frontImage, setter: setFrontImage, color: 'yellowBright' },
-                { id: 'backImage', label: 'Back Image Path', value: backImage, setter: setBackImage, color: 'blueBright' },
+                // { id: 'frontImage' as Field, label: 'Front Image Path', value: frontImage, setter: setFrontImage, color: 'yellowBright' },
+                // { id: 'backImage' as Field, label: 'Back Image Path', value: backImage, setter: setBackImage, color: 'blueBright' },
             ].map((f) => (React.createElement(Box, { key: f.id, flexDirection: "column", marginBottom: 1 },
                 React.createElement(Text, { color: field === f.id ? f.color : 'gray', bold: field === f.id },
                     f.label,
@@ -52,7 +53,7 @@ export function AddCardScreen({ deckId, deckName, onAdd, onCancel }) {
                     field === f.id ? '▶' : ''),
                 React.createElement(Box, { borderStyle: "round", borderColor: field === f.id ? f.color : 'gray', paddingX: 1 },
                     React.createElement(TextInput, { value: f.value, onChange: f.setter, onSubmit: () => {
-                            if (f.id === 'backImage') {
+                            if (f.id === 'back') {
                                 handleAdd();
                             }
                             else {

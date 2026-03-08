@@ -13,10 +13,14 @@ import {
   createDeck,
   createCard,
   getDueCards,
+  getNewCards,
+  getLearningCards,
   updateCardAfterReview,
   getDeckById,
   getCardsByDeckId,
   updateCard,
+  deleteCards,
+  deleteDecks,
 } from '../storage/db.js';
 import { importApkg } from '../apkg/importer.js';
 import { sm2 } from '../core/sm2.js';
@@ -76,6 +80,10 @@ export function App() {
             setImportError('');
             setScreen('import');
           }}
+          onDeleteDecks={(ids) => {
+            deleteDecks(ids);
+            refresh();
+          }}
         />
       )}
 
@@ -83,9 +91,14 @@ export function App() {
         <DeckMenuScreen
           deckName={activeDeck.name}
           dueCount={deckStats.find((s) => s.deck.id === activeDeckId)?.due || 0}
-          onReview={() => {
-            const cards = getDueCards(activeDeck.id);
-            setDueCards(cards);
+          newCount={deckStats.find((s) => s.deck.id === activeDeckId)?.newCards || 0}
+          learningCount={deckStats.find((s) => s.deck.id === activeDeckId)?.learning || 0}
+          onReview={(cardLimit: number) => {
+            const due = getDueCards(activeDeck.id, cardLimit);
+            const learning = getLearningCards(activeDeck.id);
+            const remainingSlots = Math.max(0, cardLimit - due.length);
+            const newCards = remainingSlots > 0 ? getNewCards(activeDeck.id, remainingSlots) : [];
+            setDueCards([...learning, ...due, ...newCards]);
             setScreen('review');
           }}
           onAddCard={() => setScreen('add-card')}
@@ -104,17 +117,22 @@ export function App() {
           onRate={(card: Card, rating: Rating) => {
             const result = sm2({
               rating,
+              state: card.state,
+              learningStep: card.learningStep,
               repetitions: card.repetitions,
               easeFactor: card.easeFactor,
               interval: card.interval,
             });
             updateCardAfterReview(
               card.id,
+              result.state,
+              result.learningStep,
               result.interval,
               result.easeFactor,
               result.repetitions,
               result.dueDate
             );
+            return result;
           }}
           onDone={() => {
             refresh();
@@ -130,6 +148,11 @@ export function App() {
           onEditCard={(card) => {
             setEditingCard(card);
             setScreen('modify-card');
+          }}
+          onDeleteCards={(ids) => {
+            deleteCards(ids);
+            setBrowseCards(getCardsByDeckId(activeDeck.id));
+            refresh();
           }}
           onBack={() => setScreen('deck-menu')}
         />
@@ -152,8 +175,8 @@ export function App() {
         <AddCardScreen
           deckId={activeDeck.id}
           deckName={activeDeck.name}
-          onAdd={(front: string, back: string, frontImage?: string, backImage?: string) => {
-            createCard(activeDeck.id, front, back, frontImage, backImage);
+          onAdd={(front: string, back: string) => {
+            createCard(activeDeck.id, front, back);
             refresh();
           }}
           onCancel={() => setScreen('deck-menu')}
