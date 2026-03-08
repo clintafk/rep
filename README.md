@@ -4,7 +4,11 @@
 
 ![Dashboard](screenshots/dashboard.png)
 
+> **Built with AI-assisted development as a personal tool for spaced repetition learning.**
+
 A spaced repetition flashcard app that lives in your terminal. Think **Anki**, but as a CLI — built with [Ink](https://github.com/vadimdemedes/ink) and React.
+
+
 
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
