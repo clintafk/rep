@@ -8,7 +8,7 @@
 
 A spaced repetition flashcard app that lives in your terminal. Think **Anki**, but as a CLI — built with [Ink](https://github.com/vadimdemedes/ink) and React.
 
-
+The idea came about with my love for the terminal. I'm Currently rocking a Neovim and Tmux setup for coding and taking notes, and Anki I use extensively for learning. I wanted to create a CLI-based spaced repetition system to make the transition seamless between the two. I'm hoping to add more features in the future to make it a complete replacement for Anki.
 
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
