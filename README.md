@@ -2,6 +2,8 @@
 
 > **🚧 In Development:** This project is actively being developed. Some features are still missing or experimental.
 
+![Dashboard](screenshots/dashboard.png)
+
 A spaced repetition flashcard app that lives in your terminal. Think **Anki**, but as a CLI — built with [Ink](https://github.com/vadimdemedes/ink) and React.
 
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
@@ -10,40 +12,7 @@ A spaced repetition flashcard app that lives in your terminal. Think **Anki**, b
 
 ---
 
-## Screenshots
 
-### Dashboard
-![Dashboard](screenshots/dashboard.png)
-The main dashboard where you can manage decks, view learning progress (due, new, and total cards), and see available keyboard shortcuts.
-
-### Adding a New Deck
-![Add Deck](screenshots/add_deck.png)
-A streamlined prompt for creating new decks, where you provide a name and an optional description.
-
-### Importing Decks
-![Import Deck](screenshots/import_deck.png)
-Seamlessly import existing Anki decks by specifying the path to your `.apkg` file.
-
-### Deck Overview
-![Deck Overview](screenshots/deck_overview.png)
-The menu for a specific deck, displaying how many cards are due and giving you the option to start reviewing, add cards, or browse the deck.
-
-### Reviewing a Card
-![Card Review](screenshots/card_review.png)
-The minimalist review interface focused entirely on the flashcard. It prompts you with the front of the card.
-
-![Card Answer](screenshots/card_answer.png)
-And waits for you to reveal the answer and rate the difficulty.
-
-### Browsing Cards
-![Browse Cards](screenshots/browse_cards.png)
-Browse all the cards within a specific deck, allowing you to view and navigate them easily.
-
-### Session Stats
-![Stats](screenshots/stats.png)
-Check your real-time session progress and statistics at any point while studying.
-
----
 
 ## Features
 
